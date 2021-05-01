@@ -10,8 +10,10 @@ find scripts -type f
 echo "+++ Running shellcheck"
 docker run \
   --rm \
+  --interactive \
+  --tty \
   --volume "${PWD}:/mnt" \
-  koalaman/shellcheck \
-  "$(find scripts -type f)"
+  koalaman/shellcheck:stable \
+  scripts/*
 
 echo "No problems"
