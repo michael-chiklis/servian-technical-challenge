@@ -28,3 +28,11 @@ variable "database_subnets" {
   description = "Database subnets"
   type        = list(string)
 }
+
+variable "docker_image" {
+  description = "Docker image"
+}
+
+variable "health_check_path" {
+  description = "Health check path"
+}
