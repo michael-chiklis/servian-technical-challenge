@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+environment="$1"
+
+if [[ -z "${environment}" ]]; then
+  echo "ERROR: no value for arg 1: environment"
+  exit 1
+fi
+
+echo "+++ Destroying Terraform for environment: ${environment}"
+./scripts/terraform destroy --var-file "${environment}.tfvars"
