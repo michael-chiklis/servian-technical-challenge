@@ -9,7 +9,7 @@
 ## TODO
 
 - [x] Shellcheck scipt
-- [ ] Terraform scripts
+- [x] Terraform scripts
 - [ ] VPC
 - [ ] RDS
 - [ ] ECS seed standalone task
