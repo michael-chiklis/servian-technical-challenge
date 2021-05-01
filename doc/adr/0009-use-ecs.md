@@ -19,7 +19,8 @@ Use Amazon Elastic Container Service. This is since:
 - It is simpler than using EC2 in conjunction with cloud-init or Packer.
 - It integrates with AWS Secrets Manager.
 - It can run the database seed stand-alone job as a standalone ECS task.
-- Supports auto scaling 
+- Supports auto scaling.
+- Supports high availability deployments.
 
 ## Consequences
 

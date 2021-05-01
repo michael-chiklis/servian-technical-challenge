@@ -12,7 +12,7 @@ What should be used to manage the relational database required for the submissio
 
 ## Decision
 
-Amazon Relational Database Service.
+Use Amazon Relational Database Service. RDS supports high availability deployments.
 
 ## Consequences
 
