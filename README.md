@@ -8,14 +8,14 @@
 
 ## TODO
 
-- Shellcheck scipt
-- Terraform scripts
-- VPC
-- RDS
-- ECS seed standalone task
-- ECS App service
-- Documentation
-- CI/CD
+- [x] Shellcheck scipt
+- [ ] Terraform scripts
+- [ ] VPC
+- [ ] RDS
+- [ ] ECS seed standalone task
+- [ ] ECS App service
+- [ ] Documentation
+- [ ] CI/CD
 
 ## Draft systems diagram
 

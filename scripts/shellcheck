@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "+++ Checking the following scipts"
+find scripts -type f
+
+echo "+++ Running shellcheck"
+docker run \
+  --rm \
+  --volume "${PWD}:/mnt" \
+  koalaman/shellcheck \
+  "$(find scripts -type f)"
+
+echo "No problems"
