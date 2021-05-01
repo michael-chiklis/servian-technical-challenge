@@ -12,6 +12,7 @@
 - [x] Terraform scripts
 - [x] VPC
 - [x] RDS
+- [ ] AWS Secrets Manager secret for DB password
 - [ ] ECS seed standalone task
 - [ ] ECS app service
 - [ ] Documentation
