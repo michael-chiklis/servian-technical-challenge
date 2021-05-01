@@ -8,7 +8,7 @@ docker run \
   --rm \
   --interactive \
   --tty \
-  --volume "${PWD}:/mnt" \
+  --volume "${PWD}/terraform:/mnt" \
   --workdir "/mnt" \
   --env AWS_ACCESS_KEY_ID \
   --env AWS_SECRET_ACCESS_KEY \

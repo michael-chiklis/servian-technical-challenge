@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+./scripts/terraform-init
+
+echo "+++ Running Terraform plan"
+./scripts/terraform plan
