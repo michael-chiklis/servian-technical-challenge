@@ -4,6 +4,10 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
+#
+# VPC
+#
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 2"
@@ -81,11 +85,50 @@ module "db_sg" {
   tags = var.default_tags
 }
 
+#
+# DB password and secret
+#
+
 resource "random_password" "db_password" {
   length           = 16
   special          = true
   override_special = "_%@"
 }
+
+resource "aws_secretsmanager_secret" "db_password" {
+  name = "${var.default_name}-db-password"
+
+  # FIXME
+  # policy = jsonencode({
+  #   Version = "2012-10-17"
+  #   Statement = [
+  #     {
+  #       Effect = "Allow"
+  #       Principal = {
+  #         AWS = "arn:aws:iam::123456789012:role/EC2RoleToAccessSecrets"
+  #       },
+  #       Action   = "secretsmanager:GetSecretValue"
+  #       Resource = "*"
+  #       Condition = {
+  #         "ForAnyValue:StringEquals" = {
+  #           "secretsmanager:VersionStage" = "AWSCURRENT"
+  #         }
+  #       }
+  #     },
+  #   ]
+  # })
+
+  tags = var.default_tags
+}
+
+resource "aws_secretsmanager_secret_version" "db_password_version" {
+  secret_id     = aws_secretsmanager_secret.db_password.id
+  secret_string = random_password.db_password.result
+}
+
+#
+# DB
+#
 
 module "db" {
   source = "terraform-aws-modules/rds/aws"
