@@ -4,5 +4,19 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+environment="$1"
+
+if [[ -z "${environment}" ]]; then
+  echo "ERROR: no value for arg 1: environment"
+  exit 1
+fi
+
 echo "+++ Initializing Terraform"
 ./scripts/terraform init
+
+if ! ./scripts/terraform workspace select "${environment}"; then
+  echo "+++ Creating Terraform workspace for environment: ${environment}"
+  ./scripts/terraform workspace new "${environment}"
+else
+  echo "--- Switched Terraform workspace to: ${environment}"
+fi

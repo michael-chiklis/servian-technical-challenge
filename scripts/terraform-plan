@@ -4,7 +4,16 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-./scripts/terraform-init
+environment="$1"
 
-echo "+++ Running Terraform plan"
-./scripts/terraform plan
+if [[ -z "${environment}" ]]; then
+  echo "ERROR: no value for arg 1: environment"
+  exit 1
+fi
+
+./scripts/terraform-init "${environment}"
+
+echo "+++ Running Terraform plan for environment: ${environment}"
+./scripts/terraform plan \
+  --var-file "${environment}.tfvars" \
+  --out "plans/${environment}"
