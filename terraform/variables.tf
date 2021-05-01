@@ -14,11 +14,6 @@ variable "region" {
   description = "AWS region"
 }
 
-variable "availability_zones" {
-  description = "AWS availability zones"
-  type        = list(string)
-}
-
 variable "private_subnets" {
   description = "Private subnets"
   type        = list(string)
@@ -26,5 +21,10 @@ variable "private_subnets" {
 
 variable "public_subnets" {
   description = "Public subnets"
+  type        = list(string)
+}
+
+variable "database_subnets" {
+  description = "Database subnets"
   type        = list(string)
 }

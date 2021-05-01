@@ -11,9 +11,9 @@
 - [x] Shellcheck scipt
 - [x] Terraform scripts
 - [x] VPC
-- [ ] RDS
+- [x] RDS
 - [ ] ECS seed standalone task
-- [ ] ECS App service
+- [ ] ECS app service
 - [ ] Documentation
 - [ ] CI/CD
 
