@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "+++ Building Docker image"
+docker build \
+  --tag "servian-technical-challenge-tools:latest" \
+  .
