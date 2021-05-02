@@ -26,12 +26,57 @@ containing Terraform and awscli. All that is required is Docker and to pass your
 into the environment for this command:
 ```sh
 $ ./scripts/terraform-plan-development
++++ Initializing Terraform
+<SNIP>
++++ Running Docker image
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_appautoscaling_policy.dev_to_cpu will be created
+  + resource "aws_appautoscaling_policy" "dev_to_cpu" {
+
+<SNIP>
+
+Plan: 68 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + alb_domain = (known after apply)
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: plans/development
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "plans/development"
 ```
 
 After reviewing the Terraform plan, it can be applied with the following command:
 ```sh
 $ ./scripts/terraform-apply-development
++++ Initializing Terraform
+<SNIP>
++++ Running Docker image
+random_password.db_password: Creating...
+random_string.prefix: Creating...
+random_password.db_password: Creation complete after 0s [id=none]
+random_string.prefix: Creation complete after 0s [id=wxuS]
+<SNIP>
+aws_appautoscaling_policy.dev_to_memory: Creating...
+aws_appautoscaling_policy.dev_to_cpu: Creating...
+aws_appautoscaling_policy.dev_to_memory: Creation complete after 0s [id=servian-technical-challenge-memory]
+aws_appautoscaling_policy.dev_to_cpu: Creation complete after 0s [id=servian-technical-challenge-cpu]
+
+Apply complete! Resources: 68 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+alb_domain = "servian-technical-challenge-lb-1938294554.ap-southeast-2.elb.amazonaws.com"
 ```
+The application should be served on the output `alb_domain`. There is no HTTPS. It might also
+take a moment to become healthy while the standalone DB seed task completes, but this is unlikely.
 
 To destroy all resources, use the following command:
 ```sh
@@ -68,6 +113,7 @@ $ siege \
 - Domain name and SSL certificate
 - Loadtest script
 - Script to taint null-resource which runs the seed job
+- Wait for the standalone seed DB task to complete before provisioning the app service
 - Smoke test
 - Splitting Terraform into modules
 - CI/CD
