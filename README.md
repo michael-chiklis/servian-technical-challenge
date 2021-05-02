@@ -32,8 +32,15 @@
 
 TODO
 
-## Systems diagram
+## System design
 
-TODO improved diagram
+- Application is deployed with RDS and ECS (Fargate)
+- Database is seeded with a standalone ECS task
+- Automation uses Terraform and AWS CLI
+- See [the ADRs](doc/adr) for more details
 
-![Draft systems diagram](doc/assets/draft-system-diagram.jpeg "Draft systems diagram")
+![System diagram](doc/assets/system-diagram.png "Draft systems diagram")
+
+[System diagram drawio source](doc/assets/system-diagram.drawio)
+
+![Draft system diagram](doc/assets/drafrt-system-diagram.jpeg "System diagram")
