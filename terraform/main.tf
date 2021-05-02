@@ -510,7 +510,7 @@ resource "aws_appautoscaling_policy" "dev_to_memory" {
   }
 }
 
-resource "aws_appautoscaling_policy" "dev_to_cpu" {
+resource "aws_appautoscaling_policy" "cpu" {
   name = "${var.default_name}-cpu"
 
   policy_type        = "TargetTrackingScaling"

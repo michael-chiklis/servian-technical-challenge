@@ -36,7 +36,7 @@ Terraform used the selected providers to generate the following execution plan. 
 Terraform will perform the following actions:
 
   # aws_appautoscaling_policy.dev_to_cpu will be created
-  + resource "aws_appautoscaling_policy" "dev_to_cpu" {
+  + resource "aws_appautoscaling_policy" "cpu" {
 
 <SNIP>
 
