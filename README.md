@@ -15,7 +15,7 @@
 - [x] AWS Secrets Manager secret for DB password
 - [x] ECS seed standalone task
 - [x] ECS app service
-- [ ] Autoscaling
+- [x] Autoscaling
 - [ ] Cleanup
 - [ ] Documentation
 - [ ] CI/CD

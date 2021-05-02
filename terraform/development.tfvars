@@ -26,7 +26,7 @@ database_subnets = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
 docker_image = "servian/techchallengeapp:latest"
 
 # Containter CPU shares
-cpu = 512
+cpu = 256
 
 # Container memory
-memory = 1024
+memory = 512

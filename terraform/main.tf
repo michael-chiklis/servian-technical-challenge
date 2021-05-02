@@ -198,7 +198,7 @@ module "db" {
 }
 
 #
-# ECS
+# ALB
 #
 
 resource "aws_lb" "alb" {
@@ -233,6 +233,10 @@ resource "aws_lb_listener" "listener" {
     type             = "forward"
   }
 }
+
+#
+# ECS
+#
 
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
@@ -411,8 +415,8 @@ resource "aws_ecs_task_definition" "app" {
 locals {
   standalone_seed_task_network_config = {
     awsvpcConfiguration : {
-      assignPublicIp  = "DISABLED"
-      subnets         = module.vpc.private_subnets
+      assignPublicIp = "DISABLED"
+      subnets        = module.vpc.private_subnets
       securityGroups = [module.app_sg.security_group_id]
     }
   }
@@ -465,5 +469,49 @@ resource "aws_ecs_service" "app" {
     base              = 0
     capacity_provider = "FARGATE"
     weight            = 1
+  }
+}
+
+#
+# Autoscaling
+#
+
+resource "aws_appautoscaling_target" "app" {
+  max_capacity       = 6
+  min_capacity       = 2
+  resource_id        = "service/${module.ecs.ecs_cluster_name}/${aws_ecs_service.app.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "dev_to_memory" {
+  name               = "memory"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.app.resource_id
+  scalable_dimension = aws_appautoscaling_target.app.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.app.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+
+    target_value = 20
+  }
+}
+
+resource "aws_appautoscaling_policy" "dev_to_cpu" {
+  name               = "cpu"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.app.resource_id
+  scalable_dimension = aws_appautoscaling_target.app.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.app.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+
+    target_value = 20
   }
 }
