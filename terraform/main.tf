@@ -215,7 +215,7 @@ resource "aws_lb_target_group" "target_group" {
 
   vpc_id      = module.vpc.vpc_id
   protocol    = "HTTP"
-  port        = 80
+  port        = 3000
   target_type = "ip"
 
   health_check {
@@ -228,7 +228,7 @@ resource "aws_lb_target_group" "target_group" {
 resource "aws_lb_listener" "listener" {
   load_balancer_arn = aws_lb.alb.arn
   protocol          = "HTTP"
-  port              = "80"
+  port              = 80
 
   default_action {
     target_group_arn = aws_lb_target_group.target_group.arn
@@ -327,6 +327,10 @@ locals {
     memory = var.memory
 
     environment = [
+      {
+        name  = "VTT_LISTENHOST"
+        value = "0.0.0.0"
+      },
       {
         name  = "VTT_DBHOST"
         value = module.db.db_instance_address
@@ -460,7 +464,7 @@ resource "aws_ecs_service" "app" {
   load_balancer {
     target_group_arn = aws_lb_target_group.target_group.arn
     container_name   = "${var.default_name}-app"
-    container_port         = var.app_port
+    container_port   = var.app_port
   }
 
   capacity_provider_strategy {

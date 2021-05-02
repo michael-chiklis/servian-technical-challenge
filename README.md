@@ -17,6 +17,7 @@
 - [x] ECS app service
 - [x] Autoscaling
 - [x] Cleanup
+- [ ] Loadtest script
 - [ ] Documentation
 
 ## Issues and next steps
