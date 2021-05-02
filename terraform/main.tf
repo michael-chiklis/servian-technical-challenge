@@ -74,14 +74,8 @@ module "app_sg" {
 
   number_of_computed_ingress_with_source_security_group_id = 1
 
-  computed_egress_with_cidr_blocks = [
-    {
-      rule        = "all-all"
-      cidr_blocks = var.vpc_cidr
-    }
-  ]
-
-  number_of_computed_egress_with_cidr_blocks = 1
+  egress_cidr_blocks = ["0.0.0.0/0"]
+  egress_rules       = ["all-all"]
 
   tags = var.default_tags
 }
