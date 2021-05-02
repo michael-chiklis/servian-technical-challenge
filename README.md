@@ -18,8 +18,21 @@
 - [x] Autoscaling
 - [x] Cleanup
 - [ ] Documentation
-- [ ] CI/CD
 
-## Draft systems diagram
+## Issues and next steps
+
+- Domain name and certificate
+- CI/CD
+- Smoke test
+- Splitting Terraform into modules
+- Script to taint null-resource which runs the seed job
+
+## Usage
+
+TODO
+
+## Systems diagram
+
+TODO improved diagram
 
 ![Draft systems diagram](doc/assets/draft-system-diagram.jpeg "Draft systems diagram")
