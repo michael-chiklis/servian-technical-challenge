@@ -2,13 +2,6 @@ provider "aws" {
   region = var.region
 }
 
-data "aws_caller_identity" "current" {}
-
-resource "random_string" "prefix" {
-  length  = 4
-  special = false
-}
-
 #
 # VPC
 #
@@ -19,12 +12,11 @@ module "vpc" {
 
   name = "${var.default_name}-vpc"
 
-  cidr             = var.vpc_cidr
-  azs              = ["${var.region}a", "${var.region}b", "${var.region}c"]
-  private_subnets  = var.private_subnets
-  public_subnets   = var.public_subnets
-  database_subnets = var.database_subnets
-
+  cidr                         = var.vpc_cidr
+  azs                          = ["${var.region}a", "${var.region}b", "${var.region}c"]
+  private_subnets              = var.private_subnets
+  public_subnets               = var.public_subnets
+  database_subnets             = var.database_subnets
   enable_nat_gateway           = true
   create_database_subnet_group = true
 
@@ -35,13 +27,15 @@ module "lb_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4"
 
-  name        = "${var.default_name}-lb-sg"
-  description = "Security group with HTTP port open for everyone"
-  vpc_id      = module.vpc.vpc_id
+  name = "${var.default_name}-lb-sg"
 
+  vpc_id = module.vpc.vpc_id
+
+  # HTTP from anywhere
   ingress_cidr_blocks = ["0.0.0.0/0"]
   ingress_rules       = ["http-80-tcp"]
 
+  # Egress to VPC
   computed_egress_with_cidr_blocks = [
     {
       rule        = "all-all"
@@ -58,14 +52,15 @@ module "app_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4"
 
-  name        = "${var.default_name}-app-sg"
-  description = "Security group for loadbalancers to access the app"
-  vpc_id      = module.vpc.vpc_id
+  name = "${var.default_name}-app-sg"
 
+  vpc_id = module.vpc.vpc_id
+
+  # App access for ALB
   computed_ingress_with_source_security_group_id = [
     {
-      from_port                = 3000
-      to_port                  = 3000
+      from_port                = var.app_port
+      to_port                  = var.app_port
       protocol                 = "tcp"
       description              = "App access from loadbalancers"
       source_security_group_id = module.lb_sg.security_group_id
@@ -74,6 +69,7 @@ module "app_sg" {
 
   number_of_computed_ingress_with_source_security_group_id = 1
 
+  # Egress anywhere to access AWS services
   egress_cidr_blocks = ["0.0.0.0/0"]
   egress_rules       = ["all-all"]
 
@@ -84,14 +80,15 @@ module "db_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4"
 
-  name        = "${var.default_name}-db-sg"
-  description = "Security group for the app to access the DB"
-  vpc_id      = module.vpc.vpc_id
+  name = "${var.default_name}-db-sg"
 
+  vpc_id = module.vpc.vpc_id
+
+  # DB access from app
   computed_ingress_with_source_security_group_id = [
     {
-      from_port                = 5432
-      to_port                  = 5432
+      from_port                = var.db_port
+      to_port                  = var.db_port
       protocol                 = "tcp"
       description              = "DB access from app"
       source_security_group_id = module.app_sg.security_group_id
@@ -100,6 +97,7 @@ module "db_sg" {
 
   number_of_computed_ingress_with_source_security_group_id = 1
 
+  # Egress to VPC
   computed_egress_with_cidr_blocks = [
     {
       rule        = "all-all"
@@ -118,6 +116,13 @@ module "db_sg" {
 
 resource "random_password" "db_password" {
   length  = 32
+  special = false
+}
+
+# AWS Secrets Manager Secrets are soft-deleted for a period, and reprovisioning one with the same
+# name is not allowed. Prefix the secret with a random string to work around this.
+resource "random_string" "prefix" {
+  length  = 4
   special = false
 }
 
@@ -141,34 +146,27 @@ module "db" {
 
   identifier = "${var.default_name}-db"
 
-  engine               = "postgres"
-  engine_version       = "13.2"
-  family               = "postgres13"
-  major_engine_version = "13"
-  instance_class       = "db.t3.small"
-
-  allocated_storage     = 20
-  max_allocated_storage = 100
-  storage_encrypted     = true
-
-  name     = "app"
-  username = "postgres"
-  password = random_password.db_password.result
-  port     = 5432
-
-  multi_az               = true
-  subnet_ids             = module.vpc.database_subnets
-  vpc_security_group_ids = [module.db_sg.security_group_id]
-
-  maintenance_window              = "Mon:00:00-Mon:03:00"
-  backup_window                   = "03:00-06:00"
-  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-
-  backup_retention_period = 0
-  skip_final_snapshot     = true  # FIXME
-  deletion_protection     = false # FIXME
-
-  performance_insights_enabled          = false # FIXME
+  engine                                = var.db_name
+  engine_version                        = "13.2"
+  family                                = "postgres13"
+  major_engine_version                  = "13"
+  instance_class                        = var.db_instance_size
+  allocated_storage                     = 20
+  max_allocated_storage                 = 100
+  storage_encrypted                     = true
+  username                              = var.db_name
+  password                              = random_password.db_password.result
+  port                                  = var.db_port
+  multi_az                              = true
+  subnet_ids                            = module.vpc.database_subnets
+  vpc_security_group_ids                = [module.db_sg.security_group_id]
+  maintenance_window                    = "Mon:00:00-Mon:03:00"
+  backup_window                         = "03:00-06:00"
+  enabled_cloudwatch_logs_exports       = ["postgresql", "upgrade"]
+  backup_retention_period               = 0
+  skip_final_snapshot                   = true
+  deletion_protection                   = false
+  performance_insights_enabled          = false
   performance_insights_retention_period = 7
   create_monitoring_role                = true
   monitoring_interval                   = 60
@@ -202,7 +200,8 @@ module "db" {
 #
 
 resource "aws_lb" "alb" {
-  name                       = "${var.default_name}-lb"
+  name = "${var.default_name}-lb"
+
   load_balancer_type         = "application"
   subnets                    = module.vpc.public_subnets
   security_groups            = [module.lb_sg.security_group_id]
@@ -212,15 +211,18 @@ resource "aws_lb" "alb" {
 }
 
 resource "aws_lb_target_group" "target_group" {
-  name        = "${var.default_name}-tg"
+  name = "${var.default_name}-tg"
+
   vpc_id      = module.vpc.vpc_id
   protocol    = "HTTP"
   port        = 80
   target_type = "ip"
 
   health_check {
-    path = "/healthcheck/"
+    path = var.app_healthcheck
   }
+
+  tags = var.default_tags
 }
 
 resource "aws_lb_listener" "listener" {
@@ -244,12 +246,11 @@ module "ecs" {
   name = "${var.default_name}-ecs"
 
   container_insights = true
-
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
   default_capacity_provider_strategy = [
     {
-      capacity_provider = "FARGATE_SPOT"
+      capacity_provider = "FARGATE"
       weight            = 1
     }
   ]
@@ -258,15 +259,22 @@ module "ecs" {
 }
 
 resource "aws_cloudwatch_log_group" "seed_db" {
-  name              = "${var.default_name}-seed-db-logs"
-  retention_in_days = 1
+  name = "${var.default_name}-seed-db-logs"
+
+  retention_in_days = var.log_retention_days
+
+  tags = var.default_tags
 }
 
 resource "aws_cloudwatch_log_group" "app" {
-  name              = "${var.default_name}-app-logs"
-  retention_in_days = 1
+  name = "${var.default_name}-app-logs"
+
+  retention_in_days = var.log_retention_days
+
+  tags = var.default_tags
 }
 
+# Assumed by ECS when executing an app task
 resource "aws_iam_role" "app_role" {
   name = "${var.default_name}-app-role"
 
@@ -284,6 +292,7 @@ resource "aws_iam_role" "app_role" {
     ]
   })
 
+  # Allows access to the DB password secret
   inline_policy {
     name = "${var.default_name}-app-role-elb-policy"
 
@@ -299,11 +308,42 @@ resource "aws_iam_role" "app_role" {
       ]
     })
   }
+
+  tags = var.default_tags
 }
 
+# Base policy with permission to services like ELB and ECR
 resource "aws_iam_role_policy_attachment" "ecs_execution_role" {
   role       = aws_iam_role.app_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# There are two task definitions - one for the app serving the site and one for a task to seed the
+# DB. This variable contains the container definition common to both.
+locals {
+  common_container_definition = {
+    image  = var.docker_image
+    cpu    = var.cpu
+    memory = var.memory
+
+    environment = [
+      {
+        name  = "VTT_DBHOST"
+        value = module.db.db_instance_address
+      },
+      {
+        name  = "VTT_DBNAME"
+        value = var.db_name
+      }
+    ]
+
+    secrets = [
+      {
+        name      = "VTT_DBPASSWORD"
+        valueFrom = aws_secretsmanager_secret.db_password.arn
+      }
+    ]
+  }
 }
 
 resource "aws_ecs_task_definition" "seed_db" {
@@ -316,29 +356,8 @@ resource "aws_ecs_task_definition" "seed_db" {
   memory                   = var.memory
 
   container_definitions = jsonencode([
-    {
-      name   = "${var.default_name}-seed-db"
-      image  = var.docker_image
-      cpu    = var.cpu
-      memory = var.memory
-
-      environment = [
-        {
-          name  = "VTT_DBHOST"
-          value = module.db.db_instance_address
-        },
-        {
-          name  = "VTT_DBNAME"
-          value = "postgres"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "VTT_DBPASSWORD"
-          valueFrom = aws_secretsmanager_secret.db_password.arn
-        }
-      ]
+    merge(local.common_container_definition, {
+      name = "${var.default_name}-seed-db"
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -350,8 +369,10 @@ resource "aws_ecs_task_definition" "seed_db" {
       }
 
       command = ["updatedb", "--skip-create-db"]
-    }
+    })
   ])
+
+  tags = var.default_tags
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -364,33 +385,8 @@ resource "aws_ecs_task_definition" "app" {
   memory                   = var.memory
 
   container_definitions = jsonencode([
-    {
-      name   = "${var.default_name}-app"
-      image  = var.docker_image
-      cpu    = var.cpu
-      memory = var.memory
-
-      environment = [
-        {
-          name  = "VTT_LISTENHOST"
-          value = "0.0.0.0"
-        },
-        {
-          name  = "VTT_DBHOST"
-          value = module.db.db_instance_address
-        },
-        {
-          name  = "VTT_DBNAME"
-          value = "postgres"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "VTT_DBPASSWORD"
-          valueFrom = aws_secretsmanager_secret.db_password.arn
-        }
-      ]
+    merge(local.common_container_definition, {
+      name = "${var.default_name}-app"
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -405,13 +401,16 @@ resource "aws_ecs_task_definition" "app" {
 
       portMappings = [
         {
-          containerPort = 3000
+          containerPort = var.app_port
         }
       ]
-    }
+    })
   ])
+
+  tags = var.default_tags
 }
 
+# This is the network configuration used in the awscli command to run the standalone seed task
 locals {
   standalone_seed_task_network_config = {
     awsvpcConfiguration : {
@@ -422,6 +421,7 @@ locals {
   }
 }
 
+# Run the standalone seed task with awscli - there's no native way to do this in Terraform
 resource "null_resource" "run_standalone_seed_task" {
   triggers = {
     db_address = module.db.db_instance_address
@@ -445,9 +445,12 @@ EOF
 resource "aws_ecs_service" "app" {
   depends_on = [null_resource.run_standalone_seed_task]
 
-  name            = "${var.default_name}-app"
-  cluster         = module.ecs.ecs_cluster_id
-  task_definition = aws_ecs_task_definition.app.arn
+  name                               = "${var.default_name}-app"
+  cluster                            = module.ecs.ecs_cluster_id
+  task_definition                    = aws_ecs_task_definition.app.arn
+  desired_count                      = var.desired_replicas
+  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = 0
 
   network_configuration {
     subnets         = module.vpc.private_subnets
@@ -457,35 +460,38 @@ resource "aws_ecs_service" "app" {
   load_balancer {
     target_group_arn = aws_lb_target_group.target_group.arn
     container_name   = "${var.default_name}-app"
-    container_port   = 3000
+    container_port         = var.app_port
   }
-
-  desired_count = 2
-
-  deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 0
 
   capacity_provider_strategy {
     base              = 0
     capacity_provider = "FARGATE"
     weight            = 1
   }
+
+  tags = var.default_tags
+
+  # Prevents redeployment if the service has auto scaled
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
 }
 
 #
-# Autoscaling
+# Auto scaling
 #
 
 resource "aws_appautoscaling_target" "app" {
-  max_capacity       = 6
-  min_capacity       = 2
+  min_capacity       = var.min_replicas
+  max_capacity       = var.max_replicas
   resource_id        = "service/${module.ecs.ecs_cluster_name}/${aws_ecs_service.app.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
 resource "aws_appautoscaling_policy" "dev_to_memory" {
-  name               = "memory"
+  name = "${var.default_name}-memory"
+
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.app.resource_id
   scalable_dimension = aws_appautoscaling_target.app.scalable_dimension
@@ -496,12 +502,13 @@ resource "aws_appautoscaling_policy" "dev_to_memory" {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
 
-    target_value = 20
+    target_value = var.autoscaling_mem_target
   }
 }
 
 resource "aws_appautoscaling_policy" "dev_to_cpu" {
-  name               = "cpu"
+  name = "${var.default_name}-cpu"
+
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.app.resource_id
   scalable_dimension = aws_appautoscaling_target.app.scalable_dimension
@@ -512,6 +519,6 @@ resource "aws_appautoscaling_policy" "dev_to_cpu" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
 
-    target_value = 20
+    target_value = var.autoscaling_cpu_target
   }
 }

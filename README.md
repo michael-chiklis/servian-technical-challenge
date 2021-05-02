@@ -16,7 +16,7 @@
 - [x] ECS seed standalone task
 - [x] ECS app service
 - [x] Autoscaling
-- [ ] Cleanup
+- [x] Cleanup
 - [ ] Documentation
 - [ ] CI/CD
 
