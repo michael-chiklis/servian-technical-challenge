@@ -17,14 +17,14 @@
 - [x] ECS app service
 - [x] Autoscaling
 - [x] Cleanup
-- [ ] Loadtest script
-- [ ] Documentation
+- [x] Documentation
 
 ## Issues and next steps
 
 - Domain name and certificate
 - CI/CD
 - Smoke test
+- Loadtest script
 - Splitting Terraform into modules
 - Script to taint null-resource which runs the seed job
 
@@ -39,8 +39,12 @@ TODO
 - Automation uses Terraform and AWS CLI
 - See [the ADRs](doc/adr) for more details
 
+### System diagram
+
 ![System diagram](doc/assets/system-diagram.png "Draft systems diagram")
 
 [System diagram drawio source](doc/assets/system-diagram.drawio)
 
-![Draft system diagram](doc/assets/drafrt-system-diagram.jpeg "System diagram")
+### Draft system diagram
+
+![Draft system diagram](doc/assets/draft-system-diagram.jpeg "System diagram")
