@@ -13,8 +13,10 @@
 - [x] VPC
 - [x] RDS
 - [x] AWS Secrets Manager secret for DB password
-- [ ] ECS seed standalone task
+- [x] ECS seed standalone task
 - [x] ECS app service
+- [ ] Autoscaling
+- [ ] Cleanup
 - [ ] Documentation
 - [ ] CI/CD
 

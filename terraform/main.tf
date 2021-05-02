@@ -408,7 +408,39 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
+locals {
+  standalone_seed_task_network_config = {
+    awsvpcConfiguration : {
+      assignPublicIp  = "DISABLED"
+      subnets         = module.vpc.private_subnets
+      securityGroups = [module.app_sg.security_group_id]
+    }
+  }
+}
+
+resource "null_resource" "run_standalone_seed_task" {
+  triggers = {
+    db_address = module.db.db_instance_address
+  }
+
+  provisioner "local-exec" {
+    # TODO script to check for task success
+    # TODO move to separate file
+    command = <<EOF
+aws ecs run-task \
+  --region='${var.region}' \
+  --cluster='${module.ecs.ecs_cluster_name}' \
+  --task-definition='${aws_ecs_task_definition.seed_db.family}:${aws_ecs_task_definition.seed_db.revision}' \
+  --launch-type='FARGATE' \
+  --started-by='Terraform' \
+  --network-configuration='${jsonencode(local.standalone_seed_task_network_config)}'
+EOF
+  }
+}
+
 resource "aws_ecs_service" "app" {
+  depends_on = [null_resource.run_standalone_seed_task]
+
   name            = "${var.default_name}-app"
   cluster         = module.ecs.ecs_cluster_id
   task_definition = aws_ecs_task_definition.app.arn
