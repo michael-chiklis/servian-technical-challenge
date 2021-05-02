@@ -25,5 +25,8 @@ database_subnets = ["10.0.21.0/24", "10.0.22.0/24", "10.0.23.0/24"]
 # Docker image
 docker_image = "servian/techchallengeapp:latest"
 
-# Health check path
-health_check_path = "/healthcheck/"
+# Containter CPU shares
+cpu = 512
+
+# Container memory
+memory = 1024

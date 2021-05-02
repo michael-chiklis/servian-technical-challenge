@@ -33,6 +33,10 @@ variable "docker_image" {
   description = "Docker image"
 }
 
-variable "health_check_path" {
-  description = "Health check path"
+variable "cpu" {
+  description = "Containter CPU shares"
+}
+
+variable "memory" {
+  description = "Container memory"
 }

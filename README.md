@@ -14,7 +14,7 @@
 - [x] RDS
 - [x] AWS Secrets Manager secret for DB password
 - [ ] ECS seed standalone task
-- [ ] ECS app service
+- [x] ECS app service
 - [ ] Documentation
 - [ ] CI/CD
 

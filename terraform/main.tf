@@ -4,6 +4,11 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
+resource "random_string" "prefix" {
+  length  = 4
+  special = false
+}
+
 #
 # VPC
 #
@@ -35,6 +40,16 @@ module "lb_sg" {
   vpc_id      = module.vpc.vpc_id
 
   ingress_cidr_blocks = ["0.0.0.0/0"]
+  ingress_rules       = ["http-80-tcp"]
+
+  computed_egress_with_cidr_blocks = [
+    {
+      rule        = "all-all"
+      cidr_blocks = var.vpc_cidr
+    }
+  ]
+
+  number_of_computed_egress_with_cidr_blocks = 1
 
   tags = var.default_tags
 }
@@ -59,6 +74,15 @@ module "app_sg" {
 
   number_of_computed_ingress_with_source_security_group_id = 1
 
+  computed_egress_with_cidr_blocks = [
+    {
+      rule        = "all-all"
+      cidr_blocks = var.vpc_cidr
+    }
+  ]
+
+  number_of_computed_egress_with_cidr_blocks = 1
+
   tags = var.default_tags
 }
 
@@ -82,6 +106,15 @@ module "db_sg" {
 
   number_of_computed_ingress_with_source_security_group_id = 1
 
+  computed_egress_with_cidr_blocks = [
+    {
+      rule        = "all-all"
+      cidr_blocks = var.vpc_cidr
+    }
+  ]
+
+  number_of_computed_egress_with_cidr_blocks = 1
+
   tags = var.default_tags
 }
 
@@ -90,33 +123,12 @@ module "db_sg" {
 #
 
 resource "random_password" "db_password" {
-  length           = 16
-  special          = true
-  override_special = "_%@"
+  length  = 32
+  special = false
 }
 
 resource "aws_secretsmanager_secret" "db_password" {
-  name = "${var.default_name}-db-password"
-
-  # FIXME
-  # policy = jsonencode({
-  #   Version = "2012-10-17"
-  #   Statement = [
-  #     {
-  #       Effect = "Allow"
-  #       principal = {
-  #         aws = aws_iam_role.app_role.arn
-  #       },
-  #       Action   = "secretsmanager:GetSecretValue"
-  #       Resource = "*"
-  #       Condition = {
-  #         "ForAnyValue:StringEquals" = {
-  #           "secretsmanager:VersionStage" = "AWSCURRENT"
-  #         }
-  #       }
-  #     },
-  #   ]
-  # })
+  name = "${random_string.prefix.result}-${var.default_name}-db-password"
 
   tags = var.default_tags
 }
@@ -199,7 +211,7 @@ resource "aws_lb" "alb" {
   name                       = "${var.default_name}-lb"
   load_balancer_type         = "application"
   subnets                    = module.vpc.public_subnets
-  security_groups            = [module.app_sg.security_group_id]
+  security_groups            = [module.lb_sg.security_group_id]
   enable_deletion_protection = false
 
   tags = var.default_tags
@@ -213,7 +225,7 @@ resource "aws_lb_target_group" "target_group" {
   target_type = "ip"
 
   health_check {
-    path = var.health_check_path
+    path = "/healthcheck/"
   }
 }
 
@@ -257,95 +269,6 @@ resource "aws_cloudwatch_log_group" "app" {
   retention_in_days = 1
 }
 
-resource "aws_ecs_task_definition" "seed_db" {
-  family = "${var.default_name}-seed-db"
-
-  execution_role_arn       = aws_iam_role.app_role.arn
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = 512
-  memory                   = 1024
-
-  # FIXME use jsonencode
-  container_definitions = <<EOF
-[
-  {
-    "name": "${var.default_name}-seed-db",
-    "image": "${var.docker_image}",
-    "cpu": 512,
-    "memory": 1024,
-    "environment": [
-      {
-        "name": "VTT_DBHOST",
-        "value" : "${module.db.db_instance_address}"
-      }
-    ],
-    "secrets": [
-      {
-        "name": "VTT_DBPASSWORD",
-        "valueFrom": "${aws_secretsmanager_secret.db_password.arn}"
-      }
-    ],
-    "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
-        "awslogs-region": "${var.region}",
-        "awslogs-group": "${aws_cloudwatch_log_group.seed_db.name}",
-        "awslogs-stream-prefix": "seed-db"
-      }
-    }
-  }
-]
-EOF
-}
-
-resource "aws_ecs_task_definition" "app" {
-  family = "${var.default_name}-app"
-
-  execution_role_arn       = aws_iam_role.app_role.arn
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = 512
-  memory                   = 1024
-
-  # FIXME use jsonencode
-  container_definitions = <<EOF
-[
-  {
-    "name": "${var.default_name}-app",
-    "image": "${var.docker_image}",
-    "cpu": 512,
-    "memory": 1024,
-    "portMappings": [
-      {
-        "containerPort": 3000
-      }
-    ],
-    "environment": [
-      {
-        "name": "VTT_DBHOST",
-        "value" : "${module.db.db_instance_address}"
-      }
-    ],
-    "secrets": [
-      {
-        "name": "VTT_DBPASSWORD",
-        "valueFrom": "${aws_secretsmanager_secret.db_password.arn}"
-      }
-    ],
-    "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
-        "awslogs-region": "${var.region}",
-        "awslogs-group": "${aws_cloudwatch_log_group.app.name}",
-        "awslogs-stream-prefix": "app"
-      }
-    }
-  }
-]
-EOF
-}
-
 resource "aws_iam_role" "app_role" {
   name = "${var.default_name}-app-role"
 
@@ -371,25 +294,130 @@ resource "aws_iam_role" "app_role" {
 
       Statement = [
         {
-          Effect = "Allow",
-          Action = "secretsmanager:GetSecretValue",
-          Resource: aws_secretsmanager_secret.db_password.arn
-        },
-        {
-          Effect = "Allow",
-          Action = "kms:Decrypt",
-          Resource: "*" # FIXME
+          Effect = "Allow"
+          Resource : aws_secretsmanager_secret.db_password.arn
+          Action = "secretsmanager:GetSecretValue"
         }
       ]
     })
   }
 }
 
+resource "aws_iam_role_policy_attachment" "ecs_execution_role" {
+  role       = aws_iam_role.app_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_ecs_task_definition" "seed_db" {
+  family = "${var.default_name}-seed-db"
+
+  execution_role_arn       = aws_iam_role.app_role.arn
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.cpu
+  memory                   = var.memory
+
+  container_definitions = jsonencode([
+    {
+      name   = "${var.default_name}-seed-db"
+      image  = var.docker_image
+      cpu    = var.cpu
+      memory = var.memory
+
+      environment = [
+        {
+          name  = "VTT_DBHOST"
+          value = module.db.db_instance_address
+        },
+        {
+          name  = "VTT_DBNAME"
+          value = "postgres"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "VTT_DBPASSWORD"
+          valueFrom = aws_secretsmanager_secret.db_password.arn
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-region        = var.region
+          awslogs-group         = aws_cloudwatch_log_group.seed_db.name
+          awslogs-stream-prefix = "seed-db"
+        }
+      }
+
+      command = ["updatedb", "--skip-create-db"]
+    }
+  ])
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family = "${var.default_name}-app"
+
+  execution_role_arn       = aws_iam_role.app_role.arn
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.cpu
+  memory                   = var.memory
+
+  container_definitions = jsonencode([
+    {
+      name   = "${var.default_name}-app"
+      image  = var.docker_image
+      cpu    = var.cpu
+      memory = var.memory
+
+      environment = [
+        {
+          name  = "VTT_LISTENHOST"
+          value = "0.0.0.0"
+        },
+        {
+          name  = "VTT_DBHOST"
+          value = module.db.db_instance_address
+        },
+        {
+          name  = "VTT_DBNAME"
+          value = "postgres"
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "VTT_DBPASSWORD"
+          valueFrom = aws_secretsmanager_secret.db_password.arn
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-region        = var.region
+          awslogs-group         = aws_cloudwatch_log_group.app.name
+          awslogs-stream-prefix = "app"
+        }
+      }
+
+      command = ["serve"]
+
+      portMappings = [
+        {
+          containerPort = 3000
+        }
+      ]
+    }
+  ])
+}
+
 resource "aws_ecs_service" "app" {
   name            = "${var.default_name}-app"
   cluster         = module.ecs.ecs_cluster_id
   task_definition = aws_ecs_task_definition.app.arn
-  # iam_role        = aws_iam_role.app_role.arn
 
   network_configuration {
     subnets         = module.vpc.private_subnets
@@ -406,4 +434,10 @@ resource "aws_ecs_service" "app" {
 
   deployment_maximum_percent         = 100
   deployment_minimum_healthy_percent = 0
+
+  capacity_provider_strategy {
+    base              = 0
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 }
